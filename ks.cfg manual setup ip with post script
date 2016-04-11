@@ -1,0 +1,123 @@
+
+install
+text
+
+#language
+lang zh_TW.UTF-8
+
+#keyboard layout
+keyboard us
+
+#network dhcp
+network --onboot yes --device eth0 --bootproto dhcp --noipv6 --hostname localhost
+
+#root password
+rootpw  --iscrypted XXXXXX
+
+#iptables setup
+firewall --port=22:tcp,80:tcp
+authconfig --enableshadow --passalgo=sha512
+
+#selinux setupe
+selinux --enforcing
+
+#timezone
+timezone Asia/Taipei
+bootloader --location=mbr --driveorder=vda --append="crashkernel=auto rhgb quiet"
+reboot
+
+zerombr
+
+#clear partition
+clearpart --all
+
+#all for / partiotion
+part / --fstype=ext4 --size=1 --grow --asprimary
+
+#2000 mb for swap
+part  swap   --fstype=swap  --size=2000
+
+#disable services
+services  --disabled cups,kdump,acpid,portreserve
+
+#install packages
+%packages
+@base
+@console-internet
+@core
+@debugging
+@directory-client
+@hardware-monitoring
+@java-platform
+@large-systems
+@network-file-system-client
+@performance
+@perl-runtime
+@server-platform
+screen
+wget
+unzip
+
+#post script no chroot & log
+%post --nochroot --log=/root/post.log
+cp /mnt/source/lnmp1.2-full.tar.gz /mnt/sysimage/root/lnmp1.2-full.tar.gz
+
+#post script chroot & log
+%post --log=/root/post.log
+#!/bin/sh
+#change to tty6
+exec < /dev/tty6 > /dev/tty6 2> /dev/tty6
+chvt 6
+
+#network config
+scrFile=/etc/sysconfig/network-scripts/ifcfg-eth0
+hostname=""
+ip=""
+netmask=""
+gw=""
+opts=""
+answer="n"
+device="eth0"
+hwaddr=`ifconfig $device | grep -i hwaddr | sed -e 's#^.*hwaddr[[:space:]]*##I'`
+dns1=""
+dns2=""
+clear
+
+while [ x"$answer" != "xy" ] && [ x"$answer" != "xY" ] ; do
+        echo -n "enter hostname: "; read hostname
+        echo -n "enter ip: "; read ip
+        echo -n "enter netmask: "; read netmask
+        echo -n "enter default gateway: "; read gw
+        echo -n "enter dns1: "; read dns1
+        echo -n "enter dns2: "; read dns2
+        echo
+
+        echo You entered:
+        echo -e "\thostname: $hostname"
+        echo -e "\tip: $ip"
+        echo -e "\tnetmask: $netmask"
+        echo -e "\tdefault gateway: $gw"
+        echo -e "\tdns server: $dns1  $dns2"
+        echo -n "Is this correct? [y/n] "; read answer
+done
+
+#modify hostname
+sed -i -e 's#^\(HOSTNAME=\).*$#\1'"$hostname"'#' /etc/sysconfig/network
+echo GATEWAY=$gw >> /etc/sysconfig/network
+
+#write ip information to eth0
+echo DEVICE=$device > $scrFile
+echo BOOTPROTO=static >> $scrFile
+echo ONBOOT=yes >> $scrFile
+echo NM_CONTROLLED=no >> $scrFile
+echo HWADDR=$hwaddr >> $scrFile
+echo IPADDR=$ip >> $scrFile
+echo NETMASK=$netmask >> $scrFile
+echo USERCTL=no >> $scrFile
+echo DNS1=$dns1 >> $scrFile
+echo DNS2=$dns2 >> $scrFile
+
+#change to tty1
+chvt 1
+exec < /dev/tty1 > /dev/tty1 2> /dev/tty1
+

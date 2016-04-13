@@ -1,4 +1,6 @@
 #!/bin/bash
+# open new tty for YUM update and LNMP install.
+# then delete self and reboot.
 openvt -s -w /root/lnmpinstall2.sh
 rm $0
 reboot

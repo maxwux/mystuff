@@ -12,7 +12,7 @@ bootloader --location=mbr --driveorder=vda --append="crashkernel=auto rhgb quiet
 reboot
 
 zerombr
-clearpart --all
+clearpart --drives=sda --all
 part / --fstype=ext4 --size=1 --grow --asprimary
 part  swap   --fstype=swap  --size=2000
 

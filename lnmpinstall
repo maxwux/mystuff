@@ -1,0 +1,4 @@
+#!/bin/bash
+openvt -s -w /root/lnmpinstall2.sh
+rm $0
+reboot

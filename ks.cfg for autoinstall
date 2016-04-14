@@ -1,23 +1,34 @@
 install
 text
+#language
 lang zh_TW.UTF-8
 keyboard us
 network --onboot yes --device eth0 --bootproto dhcp --noipv6 --hostname localhost
-rootpw  --iscrypted XXXXXXXXXXX
+#root password
+rootpw  --iscrypted XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+#setup firewall
 firewall --port=22:tcp,80:tcp
 authconfig --enableshadow --passalgo=sha512
+#selinux
 selinux --enforcing
 timezone Asia/Taipei
 bootloader --location=mbr --driveorder=vda --append="crashkernel=auto rhgb quiet"
 reboot
 
+#only install on sda
+ignoredisk --only-use=sda
 zerombr
-clearpart --drives=sda --all
-part / --fstype=ext4 --size=1 --grow --asprimary
-part  swap   --fstype=swap  --size=2000
+#clear partition
+clearpart --all
+#use sda all space for install /
+part / --fstype=ext4 --size=1 --grow --asprimary --ondisk=sda
+#swap 2000mb
+part  swap   --fstype=swap  --size=2000 --ondisk=sda
 
+#disable services
 services  --disabled cups,kdump,acpid,portreserve
 
+#install basic server packages
 %packages
 @base
 @console-internet
@@ -31,11 +42,13 @@ services  --disabled cups,kdump,acpid,portreserve
 @performance
 @perl-runtime
 @server-platform
+#install packages
 screen
 wget
 unzip
 
 %post --nochroot --log=/root/post.log
+#copy scripts
 cp /mnt/source/lnmp1.2-full.tar.gz /mnt/sysimage/root/lnmp1.2-full.tar.gz
 cp /mnt/source/lnmpinstall /mnt/sysimage/etc/init.d/lnmpinstall
 cp /mnt/source/lnmpinstall2.sh /mnt/sysimage/root/lnmpinstall2.sh
@@ -44,14 +57,16 @@ chmod +x /mnt/sysimage/root/lnmpinstall2.sh
 
 %post --log=/root/post.log
 #!/bin/sh
+#switch to tty6
 exec < /dev/tty6 > /dev/tty6 2> /dev/tty6
 chvt 6
 useradd iscom
-sed -i.bak 's/iscom\:\!\!/iscom\:XXXXXXXXXX/g' /etc/shadow
+#change iscom password
+sed -i.bak 's/iscom\:\!\!/iscom\:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/g' /etc/shadow
 cd /root
 tar zxf lnmp1.2-full.tar.gz
 
-# netzwerkconfig
+#network config
 scrFile=/etc/sysconfig/network-scripts/ifcfg-eth0
 hostname=""
 ip=""
@@ -60,6 +75,7 @@ gw=""
 opts=""
 answer="n"
 device="eth0"
+#get MAC address
 hwaddr=`ifconfig $device | grep -i hwaddr | sed -e 's#^.*hwaddr[[:space:]]*##I'`
 dns1=""
 dns2=""
@@ -96,6 +112,8 @@ echo NETMASK=$netmask >> $scrFile
 echo USERCTL=no >> $scrFile
 echo DNS1=$dns1 >> $scrFile
 echo DNS2=$dns2 >> $scrFile
+#link /etc/init.d/lnmpinstall to  /etc/rc3.d/S99lnmpinstall
 ln -s /etc/init.d/lnmpinstall  /etc/rc3.d/S99lnmpinstall
+#swtich to tty1
 chvt 1
 exec < /dev/tty1 > /dev/tty1 2> /dev/tty1
